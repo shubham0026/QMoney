@@ -165,7 +165,12 @@ public class PortfolioManagerApplication {
   //  ./gradlew test --tests PortfolioManagerApplicationTest.readTradesFromJson
   //  ./gradlew test --tests PortfolioManagerApplicationTest.mainReadFile
   public static List<PortfolioTrade> readTradesFromJson(String filename) throws IOException, URISyntaxException {
-     return Collections.emptyList();
+    File file = resolveFileFromResources(filename);
+    ObjectMapper objectMapper = getObjectMapper();
+    PortfolioTrade[] tradesArray = objectMapper.readValue(file, PortfolioTrade[].class);
+    List<PortfolioTrade> trades = Arrays.asList(tradesArray);
+    
+    return trades;
   }
 
 
