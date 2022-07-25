@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -27,8 +28,9 @@ import org.springframework.web.client.RestTemplate;
 
 public class PortfolioManagerImpl implements PortfolioManager {
 
-
-
+  public static final String TOKEN = "68ae00c14cc5d0c7865b32a76b6e9d911b963eb7";
+  public static final String URL = "https://api.tiingo.com/tiingo/daily/$SYMBOL/prices?startDate=$STARTDATE&endDate=$ENDDATE&token=$APIKEY";
+  private RestTemplate restTemplate;
 
   // Caution: Do not delete or modify the constructor, or else your build will break!
   // This is absolutely necessary for backward compatibility
@@ -50,7 +52,45 @@ public class PortfolioManagerImpl implements PortfolioManager {
 
   //CHECKSTYLE:OFF
 
+  @Override
+  public List<AnnualizedReturn> calculateAnnualizedReturn(List<PortfolioTrade> portfolioTrades,
+      LocalDate endDate) {
+    // TODO Auto-generated method stub
+    AnnualizedReturn annualizedReturn;
+    List<AnnualizedReturn> annualizedReturns = new ArrayList<>();
+    for (int i = 0; i < portfolioTrades.size(); i++) {
+      annualizedReturn = getAnnualizedReturn(portfolioTrades.get(i), endDate);
+      annualizedReturns.add(annualizedReturn);
+    }
+    Comparator<AnnualizedReturn> SortByAnnReturn = Comparator.comparing(AnnualizedReturn::getAnnualizedReturn).reversed();
+    Collections.sort(annualizedReturns, SortByAnnReturn);
+    return annualizedReturns;
+  }
 
+  private AnnualizedReturn getAnnualizedReturn(PortfolioTrade trade, LocalDate endDate) {
+    AnnualizedReturn annualizedReturn;
+    String symbol = trade.getSymbol();
+    LocalDate startLocalDate = trade.getPurchaseDate(); 
+    try{
+      List<Candle> stocksStartToEndDate = getStockQuote(symbol, startLocalDate, endDate);
+
+      Candle stockStartDate = stocksStartToEndDate.get(0);
+      Candle stockLatest = stocksStartToEndDate.get(stocksStartToEndDate.size() - 1);
+
+      Double buyPrice = stockStartDate.getOpen();
+      Double sellPrice = stockLatest.getClose();
+
+      double totalReturn = (sellPrice - buyPrice) / buyPrice;
+      double totalNumYears = ChronoUnit.DAYS.between(startLocalDate, endDate) / 365.24;
+      double annualizedReturns = Math.pow((1 + totalReturn), (1 / totalNumYears)) - 1;
+
+      annualizedReturn = new AnnualizedReturn(symbol, annualizedReturns, totalReturn);
+    }
+    catch(JsonProcessingException e){
+      annualizedReturn = new AnnualizedReturn(symbol, Double.NaN, Double.NaN);
+    }
+    return annualizedReturn;
+  }
 
 
   private Comparator<AnnualizedReturn> getComparator() {
@@ -66,11 +106,25 @@ public class PortfolioManagerImpl implements PortfolioManager {
 
   public List<Candle> getStockQuote(String symbol, LocalDate from, LocalDate to)
       throws JsonProcessingException {
-     return null;
+
+    if (from.compareTo(to) >= 0) {
+      throw new RuntimeException();
+    }
+    String uri = buildUri(symbol, from, to);
+    TiingoCandle[] stocksStartToEndDate = restTemplate.getForObject(uri, TiingoCandle[].class);
+    if (stocksStartToEndDate == null) {
+      return new ArrayList<Candle>();
+    }
+    else {
+      List<Candle> stocksList = Arrays.asList(stocksStartToEndDate);
+      return stocksList;
+    }
   }
 
   protected String buildUri(String symbol, LocalDate startDate, LocalDate endDate) {
-       String uriTemplate = "https:api.tiingo.com/tiingo/daily/$SYMBOL/prices?"
-            + "startDate=$STARTDATE&endDate=$ENDDATE&token=$APIKEY";
+      return URL.replace("$APIKEY", TOKEN).replace("$SYMBOL", symbol)
+        .replace("$STARTDATE", startDate.toString())
+        .replace("$ENDDATE", endDate.toString());      
   }
+
 }
