@@ -365,6 +365,7 @@ public class PortfolioManagerApplication {
 
   public static String getToken() {
     return TOKEN;
+
   }
 }
 

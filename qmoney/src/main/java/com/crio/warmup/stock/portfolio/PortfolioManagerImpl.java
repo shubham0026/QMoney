@@ -32,6 +32,8 @@ public class PortfolioManagerImpl implements PortfolioManager {
   public static final String URL = "https://api.tiingo.com/tiingo/daily/$SYMBOL/prices?startDate=$STARTDATE&endDate=$ENDDATE&token=$APIKEY";
   private RestTemplate restTemplate;
 
+
+
   // Caution: Do not delete or modify the constructor, or else your build will break!
   // This is absolutely necessary for backward compatibility
   protected PortfolioManagerImpl(RestTemplate restTemplate) {
@@ -126,5 +128,6 @@ public class PortfolioManagerImpl implements PortfolioManager {
         .replace("$STARTDATE", startDate.toString())
         .replace("$ENDDATE", endDate.toString());      
   }
+
 
 }
